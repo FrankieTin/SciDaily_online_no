@@ -251,7 +251,7 @@ export default function UserProfile({ startWithSettings = false, onBackToMain }:
             {user?.displayName || '访客模式'}
           </h2>
           <p className="text-[13px] md:text-[14px] text-text-muted mt-1 leading-relaxed">
-            {user ? user.email : '未绑定账号 (仅本地存储)'}<br/>
+            {user ? (user.email || user.phone || '已登录') : '未绑定账号 (仅本地存储)'}<br/>
             ID: {user ? user.uid.substring(0, 8).toUpperCase() : 'LOCAL_GUEST'}
           </p>
         </div>

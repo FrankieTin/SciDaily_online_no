@@ -4,19 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { AppState, ActiveStudySession, ThemeType, Paper, JournalEntry, SleepRecord, FocusRecord, StudySession, ResearchPlan, FitnessRecord, Achievement } from './types';
 import { useAuth } from './lib/AuthContext';
 import { format } from 'date-fns';
-import { 
-  doc, 
-  collection, 
-  onSnapshot, 
-  setDoc, 
-  updateDoc, 
-  deleteDoc, 
-  query, 
-  orderBy, 
-  getDoc,
-  writeBatch
-} from 'firebase/firestore';
-import { db } from './lib/firebase';
+import { db } from './lib/tcb';
 
 interface AppContextType {
   state: AppState;
@@ -77,22 +65,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     // 1. Listen to user profile (settings)
-    const userRef = doc(db, 'users', user.uid);
-    const unsubUser = onSnapshot(userRef, (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        setState(prev => ({
-          ...prev,
-          theme: data.theme || 'dustblue',
-          visibleTabs: data.visibleTabs || DEFAULT_TAB_ORDER,
-          activeSession: data.activeSession || null
-        }));
-        if (data.theme) document.documentElement.setAttribute('data-theme', data.theme);
-      }
+    // TCB watch syntax
+    const userWatcher = db.collection('users').doc(user.uid).watch({
+      onChange: (snapshot) => {
+        const userData = snapshot.docs[0];
+        if (userData) {
+          setState(prev => ({
+            ...prev,
+            theme: userData.theme || 'dustblue',
+            visibleTabs: userData.visibleTabs || DEFAULT_TAB_ORDER,
+            activeSession: userData.activeSession || null
+          }));
+          if (userData.theme) document.documentElement.setAttribute('data-theme', userData.theme);
+        }
+      },
+      onError: (err) => console.error('userWatcher error', err)
     });
 
-    // 2. Listen to subcollections
-    const subColConfigs = [
+    // 2. Listen to data collections
+    // In TCB, we usually use separate collections or sub-documents. 
+    // The user's blueprint suggested /users/{userId}/papers/{paperId}.
+    // In TCB Database, nested paths are not as standard as Firestore.
+    // We will use root collections with _openid or userId field.
+    
+    const collections = [
       { key: 'papers', path: 'papers', order: 'title' },
       { key: 'journals', path: 'journals', order: 'timestamp' },
       { key: 'sleepRecords', path: 'sleepRecords', order: 'timestamp' },
@@ -103,25 +99,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
       { key: 'achievements', path: 'achievements', order: 'timestamp' }
     ];
 
-    const unsubscribes = subColConfigs.map(cfg => {
-      const colRef = collection(db, 'users', user.uid, cfg.path);
-      const q = query(colRef, orderBy(cfg.order, 'desc'));
-      return onSnapshot(q, (snap) => {
-        const items = snap.docs.map(d => ({ ...d.data() }));
-        setState(prev => ({ ...prev, [cfg.key]: items }));
-      });
+    const watchers = collections.map(cfg => {
+      return db.collection(cfg.path)
+        .where({ userId: user.uid })
+        .orderBy(cfg.order, 'desc')
+        .watch({
+          onChange: (snapshot) => {
+             setState(prev => ({ ...prev, [cfg.key]: snapshot.docs }));
+          },
+          onError: (err) => console.error(`${cfg.key} watcher error`, err)
+        });
     });
 
     return () => {
-      unsubUser();
-      unsubscribes.forEach(unsub => unsub());
+      userWatcher.close();
+      watchers.forEach(w => w.close());
     };
   }, [user]);
 
   const updateRootField = async (updates: Partial<{ theme: ThemeType, visibleTabs: string[], activeSession: ActiveStudySession | null }>) => {
     if (!user) return;
-    const userRef = doc(db, 'users', user.uid);
-    await updateDoc(userRef, updates);
+    await db.collection('users').doc(user.uid).update(updates);
   };
 
   const updateVisibleTabs = (tabs: string[]) => updateRootField({ visibleTabs: tabs });
@@ -135,20 +133,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addDocInCol = async (path: string, item: any) => {
     if (!user) return;
-    const itemRef = doc(db, 'users', user.uid, path, item.id);
-    await setDoc(itemRef, item);
+    await db.collection(path).add({ ...item, userId: user.uid });
   };
   
   const updateDocInCol = async (path: string, id: string, updates: any) => {
     if (!user) return;
-    const itemRef = doc(db, 'users', user.uid, path, id);
-    await updateDoc(itemRef, updates);
+    // TCB update requires looking up the document internal id if we used .add().
+    // If we used custom ids, we can use .doc(id).
+    // Let's assume we use the 'id' field for our internal logic but TCB has its own _id.
+    // To match our 'id' field:
+    const res = await db.collection(path).where({ id, userId: user.uid }).get();
+    if (res.data.length > 0) {
+      const internalId = res.data[0]._id;
+      await db.collection(path).doc(internalId).update(updates);
+    }
   };
   
   const delDocInCol = async (path: string, id: string) => {
     if (!user) return;
-    const itemRef = doc(db, 'users', user.uid, path, id);
-    await deleteDoc(itemRef);
+    const res = await db.collection(path).where({ id, userId: user.uid }).get();
+    if (res.data.length > 0) {
+      const internalId = res.data[0]._id;
+      await db.collection(path).doc(internalId).remove();
+    }
   };
 
   return (

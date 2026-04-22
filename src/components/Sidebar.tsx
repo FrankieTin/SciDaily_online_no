@@ -45,7 +45,7 @@ export default function Sidebar({ currentTab, setCurrentTab, inMobile }: Sidebar
     )} style={{flexShrink: 0}}>
       
       {/* Mobile Top Header for Sidebar - Fixing "Missing Chunk" */}
-      <div className="md:hidden flex flex-col items-center justify-center pt-14 pb-10 bg-sage border-b border-white/10 mb-6 px-6 relative overflow-hidden">
+      <div className="md:hidden flex flex-col items-center justify-center pt-10 pb-10 bg-sage border-b border-white/10 mb-6 px-6 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 animate-pulse" />
         <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full -ml-12 -mb-12" />
         <h1 className="text-[26px] font-bold font-serif text-white m-0 z-10 drop-shadow-sm">科研Daily</h1>

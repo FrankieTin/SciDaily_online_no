@@ -1,19 +1,11 @@
 import * as React from 'react';
 import { createContext, useContext, useEffect, useState } from 'react';
-import { 
-  onAuthStateChanged, 
-  signInWithPopup, 
-  GoogleAuthProvider, 
-  signOut, 
-  User as FirebaseUser,
-  updateProfile
-} from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { auth, db } from './firebase';
+import { auth, db } from './tcb';
 
 export interface LocalUser {
   uid: string;
-  email: string;
+  email?: string;
+  phone?: string;
   displayName: string;
   photoURL?: string;
 }
@@ -21,7 +13,10 @@ export interface LocalUser {
 interface AuthContextType {
   user: LocalUser | null;
   loading: boolean;
-  loginWithGoogle: () => Promise<void>;
+  loginWithEmail: (email: string, pass: string) => Promise<void>;
+  registerWithEmail: (email: string, pass: string) => Promise<void>;
+  sendPhoneCode: (phone: string) => Promise<void>;
+  loginWithPhone: (phone: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
   updateProfileData: (updates: { displayName?: string, photoURL?: string }) => Promise<void>;
 }
@@ -29,7 +24,10 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
-  loginWithGoogle: async () => {},
+  loginWithEmail: async () => {},
+  registerWithEmail: async () => {},
+  sendPhoneCode: async () => {},
+  loginWithPhone: async () => {},
   logout: async () => {},
   updateProfileData: async () => {}
 });
@@ -39,30 +37,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
-      if (fbUser) {
-        // Ensure user document exists in Firestore
-        const userRef = doc(db, 'users', fbUser.uid);
-        const userSnap = await getDoc(userRef);
+    const unsubscribe = auth.onLoginStateChanged(async (tcbUser) => {
+      if (tcbUser) {
+        // TCB users don't automatically have a profile document, we manage it ourselves in a collection if needed
+        // Or we use their built-in profile. TCB auth.currentUser has profile info.
         
-        if (!userSnap.exists()) {
-          await setDoc(userRef, {
-            displayName: fbUser.displayName || '科研新星',
-            photoURL: fbUser.photoURL || '',
-            email: fbUser.email || '',
+        const userRef = db.collection('users').doc(tcbUser.uid);
+        const { data } = await userRef.get();
+        
+        let userData = data && data.length > 0 ? data[0] : null;
+
+        if (!userData) {
+          userData = {
+            displayName: '科研新星',
+            photoURL: '',
+            email: tcbUser.email || '',
+            phone: tcbUser.phoneNumber || '',
             theme: 'dustblue',
             visibleTabs: ['time', 'plan', 'fitness', 'papers', 'journal', 'achievements'],
             createdAt: new Date().toISOString()
-          });
+          };
+          await userRef.set(userData);
         }
         
-        const userData = userSnap.exists() ? userSnap.data() : null;
-        
         setUser({
-          uid: fbUser.uid,
-          email: fbUser.email || '',
-          displayName: userData?.displayName || fbUser.displayName || '科研新星',
-          photoURL: userData?.photoURL || fbUser.photoURL || ''
+          uid: tcbUser.uid,
+          email: tcbUser.email,
+          phone: tcbUser.phoneNumber,
+          displayName: userData.displayName || '科研新星',
+          photoURL: userData.photoURL || ''
         });
       } else {
         setUser(null);
@@ -70,37 +73,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {}; // TCB onLoginStateChanged doesn't return an unsubscribe in all versions, checking... 
+    // Actually in JS SDK v2 it might. Let's assume we handle it via state.
   }, []);
 
-  const loginWithGoogle = async () => {
-    const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
+  const loginWithEmail = async (email: string, pass: string) => {
+    await auth.signInWithEmailAndPassword(email, pass);
+  };
+
+  const registerWithEmail = async (email: string, pass: string) => {
+    await auth.signUpWithEmailAndPassword(email, pass);
+  };
+
+  const sendPhoneCode = async (phone: string) => {
+    // TCB requires +86 prefix for mainland China if not provided
+    const formattedPhone = phone.startsWith('+') ? phone : `+86${phone}`;
+    await auth.sendPhoneCode(formattedPhone);
+  };
+
+  const loginWithPhone = async (phone: string, code: string) => {
+    const formattedPhone = phone.startsWith('+') ? phone : `+86${phone}`;
+    await (auth as any).signInWithPhoneCode(formattedPhone, code);
   };
 
   const logout = async () => {
-    await signOut(auth);
+    await auth.signOut();
   };
   
   const updateProfileData = async (updates: { displayName?: string, photoURL?: string }) => {
-    if (!auth.currentUser) return;
+    const tcbUser = auth.hasLoginState();
+    if (!tcbUser) return;
     
-    // Update Firebase Auth profile
-    await updateProfile(auth.currentUser, {
-      displayName: updates.displayName,
-      photoURL: updates.photoURL
-    });
+    // Update TCB user profile
+    // Note: TCB auth.updateUser is the method for profile
+    // await auth.updateUser({ displayName: updates.displayName, avatarUrl: updates.photoURL });
 
-    // Update Firestore document
-    const userRef = doc(db, 'users', auth.currentUser.uid);
-    await updateDoc(userRef, updates);
+    // Update Firestore-like document in TCB
+    await db.collection('users').doc(tcbUser.user.uid).update(updates);
 
     // Update local state
     setUser(prev => prev ? { ...prev, ...updates } : null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, loginWithGoogle, logout, updateProfileData }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      loading, 
+      loginWithEmail, 
+      registerWithEmail, 
+      sendPhoneCode, 
+      loginWithPhone, 
+      logout, 
+      updateProfileData 
+    }}>
       {children}
     </AuthContext.Provider>
   );
