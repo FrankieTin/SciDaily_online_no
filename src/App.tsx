@@ -37,7 +37,7 @@ function AppContent() {
     <div className="flex flex-col h-screen overflow-hidden bg-base font-sans text-text-main selection:bg-sage/20 relative">
       
       {/* 顶部应用栏 - 面向移动端设计 */}
-      <div className="md:hidden flex-none flex items-center justify-center px-4 pt-10 pb-4 bg-sage border-b border-sage shadow-md z-30 relative transition-colors duration-300">
+      <div className="md:hidden flex-none flex items-center justify-center px-4 pt-8 pb-3 bg-sage border-b border-sage shadow-md z-30 relative transition-colors duration-300">
         {mainNav === 'research' && (
           <button 
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -117,7 +117,7 @@ function AppContent() {
       </div>
 
       {/* 小程序专属底部导航栏 */}
-      <div className="md:hidden flex-none fixed bottom-0 left-0 right-0 h-[92px] bg-card/90 backdrop-blur-md border-t border-line flex justify-around px-2 z-40 pb-safe shadow-lg">
+      <div className="md:hidden flex-none fixed bottom-0 left-0 right-0 h-[74px] bg-card/90 backdrop-blur-md border-t border-line flex justify-around px-2 z-40 pb-safe shadow-lg">
          <button 
            onClick={() => setMainNav('research')}
            className={cn("flex-1 flex flex-col items-center justify-center transition-colors", mainNav === 'research' ? 'text-sage font-bold' : 'text-text-muted hover:text-sage')}

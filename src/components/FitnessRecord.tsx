@@ -15,38 +15,54 @@ export default function FitnessRecordComponent() {
   
   // Cardio States
   const [cardioType, setCardioType] = useState<CardioType>('跑步机 (跑步)');
-  const [duration, setDuration] = useState(30);
-  const [incline, setIncline] = useState(0);
+  const [duration, setDuration] = useState<number | ''>(30);
+  const [incline, setIncline] = useState<number | ''>(0);
   const [otherNote, setOtherNote] = useState('');
 
   // Strength States
   const [strengthPart, setStrengthPart] = useState<StrengthBodyPart>('胸部');
   const [exerciseName, setExerciseName] = useState('');
-  const [weight, setWeight] = useState(0);
+  const [weight, setWeight] = useState<number | ''>(0);
   const [unit, setUnit] = useState<'kg'|'lbs'>('kg');
-  const [sets, setSets] = useState(4);
-  const [reps, setReps] = useState(10);
+  const [sets, setSets] = useState<number | ''>(4);
+  const [reps, setReps] = useState<number | ''>(10);
 
   const [showHistory, setShowHistory] = useState(false);
   const [historyGroup, setHistoryGroup] = useState<'day' | 'week' | 'month' | 'year'>('day');
   const [stagedRecords, setStagedRecords] = useState<Omit<FitnessRecord, 'id' | 'timestamp'>[]>([]);
 
   const convertedDisplay = () => {
-    if (weight <= 0) return null;
+    if (weight === '' || weight <= 0) return null;
     if (unit === 'kg') return `${(weight * 2.20462).toFixed(1)} lbs`;
     return `${(weight / 2.20462).toFixed(1)} kg`;
   };
 
   const handleCardioSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setStagedRecords(prev => [...prev, { loggedDate, category: 'Cardio', cardioType, durationMinutes: duration, incline, otherNote }]);
+    setStagedRecords(prev => [...prev, { 
+      loggedDate, 
+      category: 'Cardio', 
+      cardioType, 
+      durationMinutes: Number(duration) || 0, 
+      incline: Number(incline) || 0, 
+      otherNote 
+    }]);
     setDuration(30); setIncline(0); setOtherNote('');
   };
 
   const handleStrengthSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!exerciseName.trim()) return;
-    setStagedRecords(prev => [...prev, { loggedDate, category: 'Strength', strengthPart, exerciseName, weight, weightUnit: unit, sets, reps }]);
+    setStagedRecords(prev => [...prev, { 
+      loggedDate, 
+      category: 'Strength', 
+      strengthPart, 
+      exerciseName, 
+      weight: Number(weight) || 0, 
+      weightUnit: unit, 
+      sets: Number(sets) || 0, 
+      reps: Number(reps) || 0 
+    }]);
     setExerciseName(''); setWeight(0);
   };
 
@@ -225,11 +241,11 @@ export default function FitnessRecordComponent() {
               </div>
               <div>
                 <label className="block text-[12px] text-text-muted uppercase mb-1 flex items-center gap-1"><Timer size={12}/> 锻炼时长 (分钟)</label>
-                <input type="number" min="1" value={duration} onChange={e => setDuration(Number(e.target.value))} className="w-full font-mono rounded-[12px] bg-[#FAF8F6] border border-line p-3 outline-none text-[15px]" />
+                <input type="number" min="1" value={duration} onChange={e => setDuration(e.target.value === '' ? '' : Number(e.target.value))} className="w-full font-mono rounded-[12px] bg-[#FAF8F6] border border-line p-3 outline-none text-[15px]" />
               </div>
               <div>
                 <label className="block text-[12px] text-text-muted uppercase mb-1 flex items-center gap-1"><Mountain size={12}/> 训练坡度 / 阻力</label>
-                <input type="number" min="0" value={incline} onChange={e => setIncline(Number(e.target.value))} className="w-full font-mono rounded-[12px] bg-[#FAF8F6] border border-line p-3 outline-none text-[15px]" />
+                <input type="number" min="0" value={incline} onChange={e => setIncline(e.target.value === '' ? '' : Number(e.target.value))} className="w-full font-mono rounded-[12px] bg-[#FAF8F6] border border-line p-3 outline-none text-[15px]" />
               </div>
               <div className="col-span-1 md:col-span-3 flex justify-end mt-2">
                  <button type="submit" className="bg-sage hover:bg-sage-dark text-white px-8 py-3 rounded-[12px] opacity-90 transition-all font-medium">添加有氧记录</button>
@@ -251,22 +267,22 @@ export default function FitnessRecordComponent() {
               <div className="col-span-1 md:col-span-2">
                 <label className="block text-[12px] text-text-muted uppercase mb-1 flex items-center gap-1"><Scale size={12}/> 负重值</label>
                 <div className="flex border border-line rounded-[12px] bg-[#FAF8F6] overflow-hidden focus-within:border-terracotta">
-                  <input type="number" min="0" step="0.5" value={weight} onChange={e => setWeight(Number(e.target.value))} className="flex-1 bg-transparent p-3 outline-none font-mono text-[15px]" />
+                  <input type="number" min="0" step="0.5" value={weight} onChange={e => setWeight(e.target.value === '' ? '' : Number(e.target.value))} className="flex-1 bg-transparent p-3 outline-none font-mono text-[15px]" />
                   <select value={unit} onChange={e => setUnit(e.target.value as any)} className="bg-transparent border-l border-line p-3 outline-none text-[14px] font-bold text-terracotta w-20 text-center">
                     <option value="kg">KG</option>
                     <option value="lbs">LBS</option>
                   </select>
                 </div>
-                {weight > 0 && <p className="text-[12px] text-text-muted mt-1 text-right font-mono tracking-tighter">≈ {convertedDisplay()}</p>}
+                {(weight !== '' && weight > 0) && <p className="text-[12px] text-text-muted mt-1 text-right font-mono tracking-tighter">≈ {convertedDisplay()}</p>}
               </div>
 
               <div>
                 <label className="block text-[12px] text-text-muted uppercase mb-1">组数 (Sets)</label>
-                <input type="number" min="1" value={sets} onChange={e => setSets(Number(e.target.value))} className="w-full font-mono rounded-[12px] bg-[#FAF8F6] border border-line p-3 outline-none text-[15px]" />
+                <input type="number" min="1" value={sets} onChange={e => setSets(e.target.value === '' ? '' : Number(e.target.value))} className="w-full font-mono rounded-[12px] bg-[#FAF8F6] border border-line p-3 outline-none text-[15px]" />
               </div>
               <div>
                 <label className="block text-[12px] text-text-muted uppercase mb-1">每组次数 (Reps)</label>
-                <input type="number" min="1" value={reps} onChange={e => setReps(Number(e.target.value))} className="w-full font-mono rounded-[12px] bg-[#FAF8F6] border border-line p-3 outline-none text-[15px]" />
+                <input type="number" min="1" value={reps} onChange={e => setReps(e.target.value === '' ? '' : Number(e.target.value))} className="w-full font-mono rounded-[12px] bg-[#FAF8F6] border border-line p-3 outline-none text-[15px]" />
               </div>
 
               <div className="col-span-1 md:col-span-4 flex justify-end mt-2">

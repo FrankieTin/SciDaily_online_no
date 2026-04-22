@@ -40,7 +40,7 @@ export default function Sidebar({ currentTab, setCurrentTab, inMobile }: Sidebar
 
   return (
     <div className={cn(
-      "bg-card h-screen flex flex-col shadow-2xl md:shadow-none overflow-y-auto w-[280px] md:w-72 md:bg-base md:border-r border-line transition-all duration-300 md:pt-10", 
+      "bg-card h-screen flex flex-col shadow-2xl md:shadow-none overflow-y-auto w-[280px] md:w-72 md:bg-base md:border-r border-line transition-all duration-300 md:pt-10 pb-32", 
       inMobile ? "border-r border-card" : ""
     )} style={{flexShrink: 0}}>
       
@@ -103,14 +103,14 @@ export default function Sidebar({ currentTab, setCurrentTab, inMobile }: Sidebar
         })}
       </nav>
 
-      <div className="px-5 md:px-8 mt-6">
+      <div className="px-5 md:px-8 mt-6 mb-10">
         <button
           onClick={() => setCurrentTab('settings')}
           className={cn(
-            "w-full flex items-center justify-center gap-2 px-5 py-3 rounded-[16px] transition-all duration-200 border text-[14px] font-medium",
+            "w-full flex items-center justify-center gap-2 px-5 py-4 rounded-[16px] transition-all duration-200 border text-[14px] font-bold shadow-sm md:shadow-none",
             currentTab === 'settings'
               ? "bg-text-main text-white border-transparent shadow-theme" 
-              : "bg-transparent text-text-muted border-dashed border-line hover:bg-card hover:text-text-main"
+              : "bg-white md:bg-transparent text-text-muted border-dashed border-line hover:bg-card hover:text-text-main"
           )}
         >
           <Settings size={18} />

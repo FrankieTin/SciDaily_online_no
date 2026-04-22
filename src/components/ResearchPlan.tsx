@@ -11,6 +11,19 @@ export default function ResearchPlanComponent() {
   const [type, setType] = useState<'daily'|'phase'>('daily');
   const [deadlineString, setDeadlineString] = useState('');
 
+  const getTomorrowString = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split('T')[0];
+  };
+
+  const handleTypeChange = (newType: 'daily'|'phase') => {
+    setType(newType);
+    if (newType === 'phase' && !deadlineString) {
+      setDeadlineString(getTomorrowString());
+    }
+  };
+
   const plans = state.researchPlans || [];
   const dailyPlans = plans.filter(p => p.type === 'daily').sort((a,b) => b.timestamp - a.timestamp);
   const phasePlans = plans.filter(p => p.type === 'phase').sort((a,b) => b.timestamp - a.timestamp);
@@ -25,6 +38,17 @@ export default function ResearchPlanComponent() {
     setIsAdding(false);
   };
 
+  const formatDeadline = (dateStr: string) => {
+    if (!dateStr) return '';
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return dateStr;
+      return `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`;
+    } catch {
+      return dateStr;
+    }
+  };
+
   const renderPlan = (plan: ResearchPlan) => (
     <div key={plan.id} className={`p-4 rounded-[16px] border ${plan.completed ? 'bg-[#FAF8F6] opacity-60 border-line' : 'bg-card border-line shadow-sm'} transition-all flex items-start gap-4 text-left w-full`}>
       <button onClick={() => toggleResearchPlan(plan.id)} className="mt-1 flex-shrink-0 focus:outline-none">
@@ -35,7 +59,7 @@ export default function ResearchPlanComponent() {
         {plan.description && <p className="text-[13px] text-text-muted mt-1.5 leading-relaxed text-left">{plan.description}</p>}
         {plan.deadlineString && (
           <div className="mt-2 text-[11px] font-mono bg-[#FAF8F6] px-2 py-1 rounded-[6px] inline-block text-terracotta border border-line text-left items-start justify-start">
-            🎯 {plan.deadlineString}
+            🎯 {formatDeadline(plan.deadlineString)}
           </div>
         )}
       </div>
@@ -75,7 +99,7 @@ export default function ResearchPlanComponent() {
         <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-4 items-end text-left w-full">
           <div className="w-full md:w-32">
             <label className="block text-[12px] text-text-muted uppercase mb-1">规划类型</label>
-            <select value={type} onChange={e => setType(e.target.value as any)}
+            <select value={type} onChange={e => handleTypeChange(e.target.value as any)}
                className="w-full rounded-[12px] bg-[#FAF8F6] border border-line p-2.5 outline-none focus:border-sage text-[14px]">
               <option value="daily">每日计划</option>
               <option value="phase">阶段计划</option>
@@ -89,8 +113,8 @@ export default function ResearchPlanComponent() {
           {type === 'phase' && (
             <div className="w-full md:w-48">
               <label className="block text-[12px] text-text-muted uppercase mb-1">截至预期节点</label>
-              <input type="text" value={deadlineString} onChange={e => setDeadlineString(e.target.value)}
-                 className="w-full rounded-[12px] bg-[#FAF8F6] border border-line p-2.5 outline-none focus:border-sage text-[14px]" placeholder="例如：本月底" />
+              <input type="date" value={deadlineString} onChange={e => setDeadlineString(e.target.value)}
+                 className="w-full rounded-[12px] bg-[#FAF8F6] border border-line p-2.5 outline-none focus:border-sage text-[14px] font-mono" />
             </div>
           )}
           <button type="submit" className="bg-sage hover:bg-sage-dark text-white font-medium px-6 py-2.5 rounded-[12px] transition-all shadow-sm w-full md:w-auto">

@@ -22,7 +22,7 @@ export default function TimeRecord() {
   const [showHistory, setShowHistory] = useState(false);
   const [editingId, setEditingId] = useState<string|null>(null);
   const [editContent, setEditContent] = useState('');
-  const [editMinutes, setEditMinutes] = useState(0);
+  const [editMinutes, setEditMinutes] = useState<number | ''>(0);
 
   const active = state.activeSession;
 
@@ -98,7 +98,7 @@ export default function TimeRecord() {
 
   const saveEdit = () => {
     if (editingId) {
-      updateStudySession(editingId, { content: editContent, netStudyMinutes: editMinutes });
+      updateStudySession(editingId, { content: editContent, netStudyMinutes: Number(editMinutes) || 0 });
       setEditingId(null);
     }
   };
@@ -189,10 +189,10 @@ export default function TimeRecord() {
   const [editingSleep, setEditingSleep] = useState<string|null>(null);
   const [editSleepStart, setEditSleepStart] = useState('');
   const [editWakeUp, setEditWakeUp] = useState('');
-  const [editNapMins, setEditNapMins] = useState(0);
+  const [editNapMins, setEditNapMins] = useState<number | ''>(0);
 
   const [editingFocus, setEditingFocus] = useState<string|null>(null);
-  const [editFocusMins, setEditFocusMins] = useState(0);
+  const [editFocusMins, setEditFocusMins] = useState<number | ''>(0);
 
   const [showDetails, setShowDetails] = useState(false);
 
@@ -288,7 +288,7 @@ export default function TimeRecord() {
                                     <div className="space-y-3">
                                       <input className="w-full bg-base border border-sage/50 rounded-[8px] p-2 text-[13px] outline-none" value={editContent} onChange={e => setEditContent(e.target.value)} />
                                       <div className="flex items-center gap-2">
-                                        <input type="number" className="w-20 bg-base border border-sage/50 rounded-[8px] p-2 text-[13px] outline-none font-mono" value={editMinutes} onChange={e => setEditMinutes(Number(e.target.value))} />
+                                        <input type="number" className="w-20 bg-base border border-sage/50 rounded-[8px] p-2 text-[13px] outline-none font-mono" value={editMinutes} onChange={e => setEditMinutes(e.target.value === '' ? '' : Number(e.target.value)) as any} />
                                         <span className="text-[12px] text-text-muted">分钟</span>
                                         <div className="ml-auto flex gap-2">
                                           <button onClick={saveEdit} className="p-1.5 bg-sage text-white rounded-[6px]"><Save size={14}/></button>
