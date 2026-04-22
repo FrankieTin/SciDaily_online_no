@@ -19,6 +19,7 @@ export default function UserProfile({ startWithSettings = false, onBackToMain }:
   const { state, updateTheme } = useAppContext();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
+  const loginAccount = user?.phone || user?.email || '未绑定账号';
 
   const handleUpdateAvatarClick = () => {
     if (fileInputRef.current) {
@@ -227,7 +228,7 @@ export default function UserProfile({ startWithSettings = false, onBackToMain }:
             <div className="space-y-2 pt-4 border-t border-line border-dashed">
               <label className="text-[12px] text-text-muted uppercase tracking-widest font-bold">登录账号</label>
               <div className="bg-base p-4 rounded-[12px] text-[14px] text-text-main border border-line border-dashed">
-                {user?.email || '未绑定邮箱'}
+                {loginAccount}
               </div>
             </div>
           </div>
