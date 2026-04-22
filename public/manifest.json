@@ -1,0 +1,11 @@
+{
+  "name": "科研Daily",
+  "short_name": "科研Daily",
+  "description": "研究与生活记录应用",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FAF8F6",
+  "theme_color": "#4A665A"
+}
+  ]
+}

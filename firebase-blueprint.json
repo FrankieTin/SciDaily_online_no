@@ -1,0 +1,162 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User settings and profile information",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "visibleTabs": { "type": "array", "items": { "type": "string" } },
+        "theme": { "type": "string" },
+        "activeSession": { "type": "object" }
+      }
+    },
+    "Paper": {
+      "title": "Paper",
+      "description": "Research paper tracking",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "targetVenue": { "type": "string" },
+        "status": { "type": "string" },
+        "progress": { "type": "number" },
+        "deadlineString": { "type": "string" },
+        "submissions": { "type": "array" }
+      },
+      "required": ["id", "title"]
+    },
+    "JournalEntry": {
+      "title": "JournalEntry",
+      "description": "Daily journal entry",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string" },
+        "timestamp": { "type": "number" },
+        "content": { "type": "string" },
+        "mood": { "type": "string" }
+      },
+      "required": ["id", "date", "content"]
+    },
+    "SleepRecord": {
+      "title": "SleepRecord",
+      "description": "Sleep tracking record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string" },
+        "timestamp": { "type": "number" },
+        "sleepStart": { "type": "string" },
+        "wakeUp": { "type": "string" },
+        "napMinutes": { "type": "number" }
+      },
+      "required": ["id", "date"]
+    },
+    "FocusRecord": {
+      "title": "FocusRecord",
+      "description": "Focus/study time record (aggregated)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string" },
+        "timestamp": { "type": "number" },
+        "type": { "type": "string" },
+        "minutes": { "type": "number" }
+      }
+    },
+    "StudySession": {
+      "title": "StudySession",
+      "description": "Individual study session",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string" },
+        "startTime": { "type": "number" },
+        "endTime": { "type": "number" },
+        "netStudyMinutes": { "type": "number" },
+        "category": { "type": "string" },
+        "content": { "type": "string" }
+      }
+    },
+    "ResearchPlan": {
+      "title": "ResearchPlan",
+      "description": "Daily or phase research plan",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "timestamp": { "type": "number" },
+        "type": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "deadlineString": { "type": "string" },
+        "completed": { "type": "boolean" }
+      }
+    },
+    "FitnessRecord": {
+      "title": "FitnessRecord",
+      "description": "Workout record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "loggedDate": { "type": "string" },
+        "timestamp": { "type": "number" },
+        "category": { "type": "string" },
+        "exerciseName": { "type": "string" }
+      }
+    },
+    "Achievement": {
+      "title": "Achievement",
+      "description": "Research or life achievement",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "timestamp": { "type": "number" },
+        "dateString": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Root user document"
+    },
+    "/users/{userId}/papers/{paperId}": {
+      "schema": "Paper",
+      "description": "User's research papers"
+    },
+    "/users/{userId}/journals/{journalId}": {
+      "schema": "JournalEntry",
+      "description": "User's journal entries"
+    },
+    "/users/{userId}/sleepRecords/{recordId}": {
+      "schema": "SleepRecord",
+      "description": "User's sleep records"
+    },
+    "/users/{userId}/focusRecords/{recordId}": {
+      "schema": "FocusRecord",
+      "description": "User's focus records"
+    },
+    "/users/{userId}/studySessions/{sessionId}": {
+      "schema": "StudySession",
+      "description": "User's individual study sessions"
+    },
+    "/users/{userId}/researchPlans/{planId}": {
+      "schema": "ResearchPlan",
+      "description": "User's research plans"
+    },
+    "/users/{userId}/fitnessRecords/{recordId}": {
+      "schema": "FitnessRecord",
+      "description": "User's fitness records"
+    },
+    "/users/{userId}/achievements/{achievementId}": {
+      "schema": "Achievement",
+      "description": "User's achievements"
+    }
+  }
+}
