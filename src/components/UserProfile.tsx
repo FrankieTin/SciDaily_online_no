@@ -10,17 +10,22 @@ export default function UserProfile({ startWithSettings = false, onBackToMain }:
   const [showSettings, setShowSettings] = useState(startWithSettings);
   const [showThemes, setShowThemes] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
-  
-  const [showEditName, setShowEditName] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [newName, setNewName] = useState('');
   const { user, logout, updateProfileData } = useAuth();
   const { state, updateTheme } = useAppContext();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
+  const loginAccount = user?.phone || user?.email || '未绑定账号';
+
+  const openEditProfile = () => {
+    setNewName(user?.displayName || '');
+    setShowEditProfile(true);
+  };
 
   const handleUpdateAvatarClick = () => {
     if (fileInputRef.current) {
+      fileInputRef.current.value = '';
       fileInputRef.current.click();
     }
   };
@@ -74,6 +79,9 @@ export default function UserProfile({ startWithSettings = false, onBackToMain }:
         const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
         try {
           await updateProfileData({ photoURL: dataUrl });
+          if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+          }
         } catch (err) {
           console.error(err);
           alert('头像更新失败，请重试');
@@ -117,7 +125,7 @@ export default function UserProfile({ startWithSettings = false, onBackToMain }:
     if (!user || !newName.trim()) return;
     try {
       await updateProfileData({ displayName: newName.trim() });
-      setShowEditName(false);
+      setNewName(newName.trim());
     } catch (e) {
       console.error(e);
       alert('更新失败，请重试');
@@ -194,8 +202,8 @@ export default function UserProfile({ startWithSettings = false, onBackToMain }:
         </button>
 
         <div className="bg-card rounded-card shadow-theme border border-line overflow-hidden p-8 flex flex-col items-center">
-          <div className="relative group cursor-pointer mb-8" onClick={handleUpdateAvatarClick}>
-            <input type="file" ref={fileInputRef} onChange={handleAvatarUpload} accept="image/*" className="hidden" />
+          <input type="file" ref={fileInputRef} onChange={handleAvatarUpload} accept="image/*" className="hidden" />
+          <button type="button" className="relative group cursor-pointer mb-4" onClick={handleUpdateAvatarClick}>
             <div className="w-28 h-28 rounded-full bg-sage/20 border-4 border-sage flex items-center justify-center overflow-hidden">
               {user?.photoURL ? (
                 <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" />
@@ -206,7 +214,10 @@ export default function UserProfile({ startWithSettings = false, onBackToMain }:
             <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
               <Camera size={24} className="text-white" />
             </div>
-          </div>
+          </button>
+          <button type="button" onClick={handleUpdateAvatarClick} className="mb-8 text-[13px] text-sage font-bold hover:underline">
+            上传本地头像
+          </button>
 
           <div className="w-full space-y-6">
             <div className="space-y-2">
@@ -215,7 +226,7 @@ export default function UserProfile({ startWithSettings = false, onBackToMain }:
                 <input 
                   value={newName} 
                   onChange={e => setNewName(e.target.value)}
-                  placeholder={user?.displayName || "请输入新昵称"}
+                  placeholder="请输入新昵称"
                   className="flex-1 bg-base border border-line rounded-[12px] px-4 py-3 text-[14px] outline-none focus:border-sage transition-colors"
                 />
                 <button onClick={handleUpdateName} className="bg-sage text-white px-6 rounded-[12px] text-[14px] font-bold hover:bg-sage-dark transition-colors">
@@ -227,7 +238,7 @@ export default function UserProfile({ startWithSettings = false, onBackToMain }:
             <div className="space-y-2 pt-4 border-t border-line border-dashed">
               <label className="text-[12px] text-text-muted uppercase tracking-widest font-bold">登录账号</label>
               <div className="bg-base p-4 rounded-[12px] text-[14px] text-text-main border border-line border-dashed">
-                {user?.email || '未绑定邮箱'}
+                {loginAccount}
               </div>
             </div>
           </div>
@@ -251,11 +262,11 @@ export default function UserProfile({ startWithSettings = false, onBackToMain }:
             {user?.displayName || '访客模式'}
           </h2>
           <p className="text-[13px] md:text-[14px] text-text-muted mt-1 leading-relaxed">
-            {user ? (user.email || user.phone || '已登录') : '未绑定账号 (仅本地存储)'}<br/>
+            {user ? (loginAccount || '已登录') : '未绑定账号 (仅本地存储)'}<br/>
             ID: {user ? user.uid.substring(0, 8).toUpperCase() : 'LOCAL_GUEST'}
           </p>
         </div>
-        <button onClick={() => { setNewName(user?.displayName || ''); setShowEditProfile(true); }} className="absolute top-6 right-6 text-sage hover:bg-sage/10 p-2.5 rounded-full transition-colors border border-line hover:border-sage/40">
+        <button onClick={openEditProfile} className="absolute top-6 right-6 text-sage hover:bg-sage/10 p-2.5 rounded-full transition-colors border border-line hover:border-sage/40">
           <Edit3 size={18} />
         </button>
       </div>
@@ -265,7 +276,7 @@ export default function UserProfile({ startWithSettings = false, onBackToMain }:
           账号与个性化设置
         </div>
         <div className="flex flex-col">
-          <button className="flex items-center justify-between p-5 border-b border-line hover:bg-base transition-colors group" onClick={() => setShowEditProfile(true)}>
+          <button className="flex items-center justify-between p-5 border-b border-line hover:bg-base transition-colors group" onClick={openEditProfile}>
             <div className="flex items-center gap-3 text-[16px] text-text-main font-bold">
               <div className="p-2 rounded-[10px] bg-terracotta/10 text-terracotta group-hover:scale-110 transition-transform">
                 <User size={18} />

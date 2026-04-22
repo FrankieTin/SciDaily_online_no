@@ -5,6 +5,13 @@ import { X, ChevronRight, Mail, Phone, Lock, MessageSquare } from 'lucide-react'
 export default function LoginModal({ onClose }: { onClose: () => void }) {
   const [loginType, setLoginType] = useState<'email' | 'phone'>('phone');
   const [isRegister, setIsRegister] = useState(false);
+  const [emailMode, setEmailMode] = useState<'password' | 'code'>('password');
+  // 手机号登录/注册 subtypes
+  const [phoneMode, setPhoneMode] = useState<'password' | 'code'>('password');
+  // 步骤控制
+  const [PhoneVerificationStep, setPhoneVerificationStep] = useState(false);
+  const [emailVerificationStep, setEmailVerificationStep] = useState(false);
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
@@ -12,8 +19,10 @@ export default function LoginModal({ onClose }: { onClose: () => void }) {
   const [isCodeSent, setIsCodeSent] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [error, setError] = useState('');
+  const [phoneVerificationInfo, setPhoneVerificationInfo] = useState<any>(null);
+  const [emailVerificationInfo, setEmailVerificationInfo] = useState<any>(null);
   
-  const { loginWithEmail, registerWithEmail, sendPhoneCode, loginWithPhone } = useAuth();
+  const { loginWithEmail, loginWithEmailCode, registerWithEmail, sendEmailCode, sendPhoneCode, loginWithPhonePassword, loginWithPhoneCode, registerWithPhone } = useAuth();
 
   useEffect(() => {
     let timer: any;
@@ -23,18 +32,70 @@ export default function LoginModal({ onClose }: { onClose: () => void }) {
     return () => clearInterval(timer);
   }, [countdown]);
 
+  // 重置所有状态
+  const resetStates = () => {
+    setEmail('');
+    setPassword('');
+    setPhone('');
+    setCode('');
+    setIsCodeSent(false);
+    setCountdown(0);
+    setEmailMode('password');
+    setPhoneMode('password');
+    setPhoneVerificationStep(false);
+    setEmailVerificationStep(false);
+    setPhoneVerificationInfo(null);
+    setEmailVerificationInfo(null);
+    setError('');
+  };
+
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    try {
-      if (isRegister) {
-        await registerWithEmail(email, password);
-      } else {
-        await loginWithEmail(email, password);
+    
+    if (isRegister) {
+      if (!code.trim()) {
+        setError('请输入验证码');
+        return;
       }
-      onClose();
-    } catch (err: any) {
-      setError(err.message || '操作失败');
+      if (!password.trim()) {
+        setError('请设置密码');
+        return;
+      }
+      if (!emailVerificationInfo?.verification_id) {
+        setError('请先获取验证码');
+        return;
+      }
+      try {
+        await registerWithEmail(email, code, emailVerificationInfo, password);
+        onClose();
+      } catch (err: any) {
+        setError(err.message || '注册失败');
+      }
+    } else {
+      if (emailMode === 'password') {
+        try {
+          await loginWithEmail(email, password);
+          onClose();
+        } catch (err: any) {
+          setError(err.message || '登录失败');
+        }
+      } else {
+        if (!code.trim()) {
+          setError('请输入验证码');
+          return;
+        }
+        if (!emailVerificationInfo?.verification_id) {
+          setError('请先获取验证码');
+          return;
+        }
+        try {
+          await loginWithEmailCode(email, code, emailVerificationInfo);
+          onClose();
+        } catch (err: any) {
+          setError(err.message || '登录失败');
+        }
+      }
     }
   };
 
@@ -42,8 +103,22 @@ export default function LoginModal({ onClose }: { onClose: () => void }) {
     if (!phone || countdown > 0) return;
     setError('');
     try {
-      await sendPhoneCode(phone);
+      const result = await sendPhoneCode(phone);
+      setPhoneVerificationInfo(result);
       setIsCodeSent(true);
+      setCountdown(60);
+    } catch (err: any) {
+      setError(err.message || '发送验证码失败');
+    }
+  };
+
+  const handleSendEmailCode = async () => {
+    if (!email || countdown > 0) return;
+    setError('');
+    try {
+      const result = await sendEmailCode(email);
+      setEmailVerificationInfo(result);
+      setEmailVerificationStep(true);
       setCountdown(60);
     } catch (err: any) {
       setError(err.message || '发送验证码失败');
@@ -53,11 +128,70 @@ export default function LoginModal({ onClose }: { onClose: () => void }) {
   const handlePhoneLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    try {
-      await loginWithPhone(phone, code);
-      onClose();
-    } catch (err: any) {
-      setError(err.message || '登录失败');
+    
+    if (isRegister) {
+      // 手机号注册
+      if (!PhoneVerificationStep) {
+        // 第一步：发送验证码
+        try {
+          const result = await sendPhoneCode(phone);
+          setPhoneVerificationInfo(result);
+          setIsCodeSent(true);
+          setPhoneVerificationStep(true);
+          setCountdown(60);
+        } catch (err: any) {
+          setError(err.message || '发送验证码失败');
+        }
+        return;
+      } else {
+        // 第二步：验证验证码并注册
+        if (!code.trim()) {
+          setError('请输入验证码');
+          return;
+        }
+        if (!password.trim()) {
+          setError('请设置密码');
+          return;
+        }
+        try {
+          await registerWithPhone(phone, code, phoneVerificationInfo, password);
+          onClose();
+        } catch (err: any) {
+          setError(err.message || '注册失败');
+        }
+      }
+    } else {
+      // 手机号登录
+      if (phoneMode === 'password') {
+        // 密码登录
+        if (!password.trim()) {
+          setError('请输入密码');
+          return;
+        }
+        try {
+          await loginWithPhonePassword(phone, password);
+          onClose();
+        } catch (err: any) {
+          // 如果错误提示用户未注册，可引导注册
+          setError(err.message || '登录失败');
+        }
+        } else {
+          // 验证码登录
+          if (!code.trim()) {
+            setError('请输入验证码');
+            return;
+          }
+          if (!isCodeSent) {
+            setError('请先获取验证码');
+            return;
+          }
+          try {
+            await loginWithPhoneCode(phone, code, phoneVerificationInfo);
+            onClose();
+          } catch (err: any) {
+            setError(err.message || '登录失败');
+          }
+        }
     }
   };
 
@@ -80,22 +214,30 @@ export default function LoginModal({ onClose }: { onClose: () => void }) {
                欢迎来到科研Daily
              </h2>
              <p className="text-[14px] text-text-muted mt-2">
-               国内环境加速引擎保障您的极致体验
+               你的科研、生活将在此留下精彩瞬间！
              </p>
           </div>
 
           <div className="flex gap-4 mb-6">
             <button 
-              onClick={() => { setLoginType('phone'); setError(''); }}
+              onClick={() => { 
+                setLoginType('phone'); 
+                setError(''); 
+                resetStates();
+              }}
               className={`flex-1 py-2 text-[14px] font-bold rounded-[12px] border transition-all ${loginType === 'phone' ? 'bg-sage text-white border-sage' : 'bg-transparent text-text-muted border-line hover:border-sage/40'}`}
             >
-              手机登录
+              {isRegister ? '手机注册' : '手机登录'}
             </button>
             <button 
-              onClick={() => { setLoginType('email'); setError(''); }}
+              onClick={() => { 
+                setLoginType('email'); 
+                setError(''); 
+                resetStates();
+              }}
               className={`flex-1 py-2 text-[14px] font-bold rounded-[12px] border transition-all ${loginType === 'email' ? 'bg-sage text-white border-sage' : 'bg-transparent text-text-muted border-line hover:border-sage/40'}`}
             >
-              邮箱登录
+              {isRegister ? '邮箱注册' : '邮箱登录'}
             </button>
           </div>
 
@@ -120,33 +262,91 @@ export default function LoginModal({ onClose }: { onClose: () => void }) {
                   className="w-full bg-[#FAF8F6] border border-line pl-11 pr-4 py-3.5 rounded-[16px] text-[15px] outline-none focus:ring-1 focus:ring-sage transition-all"
                 />
               </div>
-              
-              <div className="flex gap-2">
-                <div className="relative flex-1">
+
+              {!isRegister && (
+                <div className="flex gap-2 mb-2">
+                  <button
+                    type="button"
+                    onClick={() => { setPhoneMode('password'); setError(''); }}
+                    className={`flex-1 py-2 text-[13px] font-bold rounded-[12px] border transition-all ${phoneMode === 'password' ? 'bg-sage text-white border-sage' : 'bg-transparent text-text-muted border-line hover:border-sage/40'}`}
+                  >
+                    密码登录
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setPhoneMode('code'); setError(''); }}
+                    className={`flex-1 py-2 text-[13px] font-bold rounded-[12px] border transition-all ${phoneMode === 'code' ? 'bg-sage text-white border-sage' : 'bg-transparent text-text-muted border-line hover:border-sage/40'}`}
+                  >
+                    验证码登录
+                  </button>
+                </div>
+              )}
+
+              {(!isRegister && phoneMode === 'password') && (
+                <div className="relative">
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted">
-                    <MessageSquare size={18} />
+                    <Lock size={18} />
                   </div>
                   <input 
-                    type="text" 
+                    type="password" 
                     required
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                    placeholder="验证码" 
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="密码" 
                     className="w-full bg-[#FAF8F6] border border-line pl-11 pr-4 py-3.5 rounded-[16px] text-[15px] outline-none focus:ring-1 focus:ring-sage transition-all"
                   />
                 </div>
-                <button 
-                  type="button" 
-                  onClick={handeSendCode}
-                  disabled={countdown > 0}
-                  className={`px-4 rounded-[16px] text-[13px] font-bold border transition-all ${countdown > 0 ? 'bg-base text-text-muted border-line' : 'bg-white text-sage border-sage hover:bg-sage/5'}`}
-                >
-                  {countdown > 0 ? `${countdown}s` : '获取验证码'}
-                </button>
-              </div>
+              )}
+
+              {(isRegister || phoneMode === 'code' || PhoneVerificationStep) && (
+                <>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted">
+                        <MessageSquare size={18} />
+                      </div>
+                      <input 
+                        type="text" 
+                        required
+                        value={code}
+                        onChange={(e) => setCode(e.target.value)}
+                        placeholder="验证码" 
+                        className="w-full bg-[#FAF8F6] border border-line pl-11 pr-4 py-3.5 rounded-[16px] text-[15px] outline-none focus:ring-1 focus:ring-sage transition-all"
+                      />
+                    </div>
+                    <button 
+                      type="button" 
+                      onClick={handeSendCode}
+                      disabled={countdown > 0}
+                      className={`px-4 rounded-[16px] text-[13px] font-bold border transition-all ${countdown > 0 ? 'bg-base text-text-muted border-line' : 'bg-white text-sage border-sage hover:bg-sage/5'}`}
+                    >
+                      {countdown > 0 ? `${countdown}s` : '获取验证码'}
+                    </button>
+                  </div>
+
+                  {isRegister && (
+                    <div className="relative">
+                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted">
+                        <Lock size={18} />
+                      </div>
+                      <input 
+                        type="password" 
+                        required
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="设置密码（至少8位）" 
+                        className="w-full bg-[#FAF8F6] border border-line pl-11 pr-4 py-3.5 rounded-[16px] text-[15px] outline-none focus:ring-1 focus:ring-sage transition-all"
+                      />
+                    </div>
+                  )}
+                </>
+              )}
 
               <button type="submit" className="w-full bg-sage text-white font-bold py-3.5 rounded-[16px] text-[15px] hover:bg-sage-dark transition-colors shadow-sm flex justify-center items-center gap-2 group mt-2">
-                立即登录
+                {isRegister 
+                  ? (PhoneVerificationStep ? '完成注册' : '获取验证码')
+                  : '立即登录'
+                }
                 <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
               </button>
             </form>
@@ -165,41 +365,101 @@ export default function LoginModal({ onClose }: { onClose: () => void }) {
                   className="w-full bg-[#FAF8F6] border border-line pl-11 pr-4 py-3.5 rounded-[16px] text-[15px] outline-none focus:ring-1 focus:ring-sage transition-all"
                 />
               </div>
-              
-              <div className="relative">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted">
-                  <Lock size={18} />
+
+              {!isRegister && (
+                <div className="flex gap-2 mb-2">
+                  <button
+                    type="button"
+                    onClick={() => { setEmailMode('password'); setError(''); setCode(''); }}
+                    className={`flex-1 py-2 text-[13px] font-bold rounded-[12px] border transition-all ${emailMode === 'password' ? 'bg-sage text-white border-sage' : 'bg-transparent text-text-muted border-line hover:border-sage/40'}`}
+                  >
+                    密码登录
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setEmailMode('code'); setError(''); setPassword(''); }}
+                    className={`flex-1 py-2 text-[13px] font-bold rounded-[12px] border transition-all ${emailMode === 'code' ? 'bg-sage text-white border-sage' : 'bg-transparent text-text-muted border-line hover:border-sage/40'}`}
+                  >
+                    验证码登录
+                  </button>
                 </div>
-                <input 
-                  type="password" 
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="密码" 
-                  className="w-full bg-[#FAF8F6] border border-line pl-11 pr-4 py-3.5 rounded-[16px] text-[15px] outline-none focus:ring-1 focus:ring-sage transition-all"
-                />
-              </div>
+              )}
+
+              {(isRegister || (!isRegister && emailMode === 'code')) && (
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted">
+                      <MessageSquare size={18} />
+                    </div>
+                    <input 
+                      type="text" 
+                      required
+                      value={code}
+                      onChange={(e) => setCode(e.target.value)}
+                      placeholder="验证码" 
+                      className="w-full bg-[#FAF8F6] border border-line pl-11 pr-4 py-3.5 rounded-[16px] text-[15px] outline-none focus:ring-1 focus:ring-sage transition-all"
+                    />
+                  </div>
+                  <button 
+                    type="button"
+                    onClick={handleSendEmailCode}
+                    disabled={countdown > 0}
+                    className={`px-4 rounded-[16px] text-[13px] font-bold border transition-all ${countdown > 0 ? 'bg-base text-text-muted border-line' : 'bg-white text-sage border-sage hover:bg-sage/5'}`}
+                  >
+                    {countdown > 0 ? `${countdown}s` : '获取验证码'}
+                  </button>
+                </div>
+              )}
+
+              {(isRegister || (!isRegister && emailMode === 'password')) && (
+                <div className="relative">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted">
+                    <Lock size={18} />
+                  </div>
+                  <input 
+                    type="password" 
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder={isRegister ? "设置密码（至少8位）" : "密码"} 
+                    className="w-full bg-[#FAF8F6] border border-line pl-11 pr-4 py-3.5 rounded-[16px] text-[15px] outline-none focus:ring-1 focus:ring-sage transition-all"
+                  />
+                </div>
+              )}
 
               <button type="submit" className="w-full bg-sage text-white font-bold py-3.5 rounded-[16px] text-[15px] hover:bg-sage-dark transition-colors shadow-sm flex justify-center items-center gap-2 group mt-2">
-                {isRegister ? '立即注册' : '点击登录'}
+                {isRegister ? '完成注册' : '点击登录'}
                 <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
               </button>
-
-              <div className="mt-4 text-center">
-                 <button 
-                   type="button"
-                   onClick={() => setIsRegister(!isRegister)}
-                   className="text-[13px] text-sage hover:underline font-bold"
-                 >
-                   {isRegister ? '已有账号？直接登录' : '没有账号？创建全新身份'}
-                 </button>
-              </div>
             </form>
           )}
 
-          <p className="mt-8 text-center text-[12px] text-text-muted">
-            数据将同步至由腾讯云提供支持的国内分片
-          </p>
+          <div className="mt-6 text-center">
+            {!isRegister ? (
+              <button 
+                type="button"
+                onClick={() => {
+                  setIsRegister(true);
+                  resetStates();
+                }}
+                className="text-[13px] text-sage hover:underline font-bold"
+              >
+                没有账号？立即注册
+              </button>
+            ) : (
+              <button 
+                type="button"
+                onClick={() => {
+                  setIsRegister(false);
+                  resetStates();
+                }}
+                className="text-[13px] text-sage hover:underline font-bold"
+              >
+                已有账号？立即登录
+              </button>
+            )}
+          </div>
+
         </div>
       </div>
     </div>
