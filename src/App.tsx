@@ -37,16 +37,16 @@ function AppContent() {
     <div className="flex flex-col h-screen overflow-hidden bg-base font-sans text-text-main selection:bg-sage/20 relative">
       
       {/* 顶部应用栏 - 面向移动端设计 */}
-      <div className="md:hidden flex-none flex items-center justify-center px-4 pt-5 pb-2 bg-sage border-b border-sage shadow-md z-30 relative transition-colors duration-300">
+      <div className="md:hidden flex-none flex items-center justify-center px-4 pt-[calc(env(safe-area-inset-top)+0.2rem)] pb-1 bg-sage border-b border-sage shadow-md z-30 relative transition-colors duration-300">
         {mainNav === 'research' && (
           <button 
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="absolute left-4 p-2 text-white bg-white/20 border border-white/30 rounded-[12px] hover:bg-white/30 transition-colors shadow-sm"
+            className="absolute left-4 top-[calc(env(safe-area-inset-top)+0.2rem)] p-2 text-white bg-white/20 border border-white/30 rounded-[12px] hover:bg-white/30 transition-colors shadow-sm"
           >
             {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
           </button>
         )}
-        <h1 className="text-[18px] font-bold font-serif text-white m-0 flex items-center gap-2">
+        <h1 className="text-[18px] font-bold font-serif text-white m-0 flex items-center gap-2 leading-none">
           科研Daily
         </h1>
       </div>
