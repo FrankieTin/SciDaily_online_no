@@ -53,7 +53,7 @@ export default function PaperProgress() {
   const [customStatusInput, setCustomStatusInput] = useState<{paperId: string, subId: string, value: string} | null>(null);
 
   useEffect(() => {
-    const handleOutsideClick = (e: MouseEvent) => {
+    const handleOutsideClick = (e: PointerEvent) => {
       const target = e.target as HTMLElement;
       if (!target.closest('.paper-card')) {
         setExpandedWritingId(null);
@@ -63,8 +63,8 @@ export default function PaperProgress() {
         setStatusMenuOpenId(null);
       }
     };
-    document.addEventListener('mousedown', handleOutsideClick);
-    return () => document.removeEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('pointerdown', handleOutsideClick);
+    return () => document.removeEventListener('pointerdown', handleOutsideClick);
   }, []);
 
   const papers = state.papers || [];

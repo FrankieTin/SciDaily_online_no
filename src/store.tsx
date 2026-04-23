@@ -59,12 +59,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [localState, setLocalState] = useLocalStorage<AppState>('research_daily_state', defaultState);
   const [state, setState] = useState<AppState>(localState);
 
-  // Sync state to localState for guests or as backup
+  // Persist a local backup for both guests and logged-in users so the main modules
+  // stay responsive even if cloud sync/watch is slow or unavailable on mobile.
   useEffect(() => {
-    if (!user) {
-      setLocalState(state);
-    }
-  }, [state, user]);
+    setLocalState(state);
+  }, [state]);
 
   useEffect(() => {
     if (!user) {
@@ -129,18 +128,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (userWatcher) userWatcher.close();
       watchers.forEach((w: any) => w && w.close());
     };
-  }, [user, localState]);
+  }, [user]);
 
   const updateRootField = async (updates: Partial<{ theme: ThemeType, visibleTabs: string[], activeSession: ActiveStudySession | null }>) => {
-    if (!user) {
-      setState(prev => ({ ...prev, ...updates }));
-      return;
-    }
+    setState(prev => ({ ...prev, ...updates }));
+
+    if (!user) return;
+
     try {
       await db.collection('users').doc(user.uid).update(updates);
     } catch (e) {
-      console.error('Update cloud profile failed, falling back to local', e);
-      setState(prev => ({ ...prev, ...updates }));
+      console.error('Update cloud profile failed, keeping local optimistic state', e);
     }
   };
 
@@ -154,53 +152,84 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const setActiveSession = (session: ActiveStudySession | null) => updateRootField({ activeSession: session });
 
   const addDocInCol = async (path: string, item: any, key: keyof AppState) => {
-    if (!user) {
-      setState(prev => ({ ...prev, [key]: [item, ...(prev[key] as any[])] }));
-      return;
-    }
+    setState(prev => ({ ...prev, [key]: [item, ...(prev[key] as any[])] }));
+
+    if (!user) return;
+
     try {
       await db.collection(path).add({ ...item, userId: user.uid });
     } catch (e) {
-      console.error(`Add doc to ${path} failed`, e);
-      setState(prev => ({ ...prev, [key]: [item, ...(prev[key] as any[])] }));
+      console.error(`Add doc to ${path} failed, keeping local optimistic state`, e);
     }
   };
   
   const updateDocInCol = async (path: string, id: string, updates: any, key: keyof AppState) => {
-    if (!user) {
-      setState(prev => ({
-        ...prev,
-        [key]: (prev[key] as any[]).map(x => x.id === id ? { ...x, ...updates } : x)
-      }));
-      return;
-    }
+    let optimisticDoc: any = null;
+    setState(prev => ({
+      ...prev,
+      [key]: (prev[key] as any[]).map(x => {
+        if (x.id !== id) return x;
+        optimisticDoc = { ...x, ...updates };
+        return optimisticDoc;
+      })
+    }));
+
+    if (!user) return;
+
     try {
-      const res = await db.collection(path).where({ id, userId: user.uid }).get();
-      if (res.data.length > 0) {
-        const internalId = res.data[0]._id;
+      const internalId = optimisticDoc?._id;
+
+      if (internalId) {
         await db.collection(path).doc(internalId).update(updates);
+        return;
+      }
+
+      const res = await db.collection(path).where({ id }).get();
+      const matchedDoc = (res.data || []).find((doc: any) => doc.userId === user.uid);
+
+      if (matchedDoc?._id) {
+        await db.collection(path).doc(matchedDoc._id).update(updates);
+      } else {
+        console.warn(`No cloud doc found for ${path}:${id}; local state was updated optimistically.`);
       }
     } catch (e) {
-      console.error(`Update doc in ${path} failed`, e);
+      console.error(`Update doc in ${path} failed, keeping local optimistic state`, e);
     }
   };
   
   const delDocInCol = async (path: string, id: string, key: keyof AppState) => {
-    if (!user) {
-      setState(prev => ({
-        ...prev,
-        [key]: (prev[key] as any[]).filter(x => x.id !== id)
-      }));
-      return;
-    }
+    let removedDoc: any = null;
+    setState(prev => ({
+      ...prev,
+      [key]: (prev[key] as any[]).filter(x => {
+        if (x.id === id) {
+          removedDoc = x;
+          return false;
+        }
+        return true;
+      })
+    }));
+
+    if (!user) return;
+
     try {
-      const res = await db.collection(path).where({ id, userId: user.uid }).get();
-      if (res.data.length > 0) {
-        const internalId = res.data[0]._id;
+      const internalId = removedDoc?._id;
+
+      if (internalId) {
         await db.collection(path).doc(internalId).remove();
+        return;
+      }
+
+      const res = await db.collection(path).where({ id }).get();
+      const matchedDoc = (res.data || []).find((doc: any) => doc.userId === user.uid);
+
+      if (matchedDoc?._id) {
+        await db.collection(path).doc(matchedDoc._id).remove();
+      } else {
+        console.warn(`No cloud doc found for ${path}:${id}; local state was removed optimistically.`);
       }
     } catch (e) {
-      console.error(`Delete doc from ${path} failed`, e);
+      console.error(`Delete doc from ${path} failed, keeping local optimistic state`, e);
     }
   };
 

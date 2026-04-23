@@ -106,14 +106,14 @@ export default function TimeRecord() {
   const [showShortAlert, setShowShortAlert] = useState(false);
 
   useEffect(() => {
-    const handleOutsideClick = (e: MouseEvent) => {
+    const handleOutsideClick = (e: PointerEvent) => {
       const target = e.target as HTMLElement;
       if (!target.closest('.summary-card')) {
         setShowDetails(false);
       }
     };
-    document.addEventListener('mousedown', handleOutsideClick);
-    return () => document.removeEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('pointerdown', handleOutsideClick);
+    return () => document.removeEventListener('pointerdown', handleOutsideClick);
   }, []);
 
   const sessions = state.studySessions || [];
