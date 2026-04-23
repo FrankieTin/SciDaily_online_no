@@ -6,4 +6,3 @@ coverage/
 *.log
 .env*
 !.env.example
-artifacts/mobile-topbar.png

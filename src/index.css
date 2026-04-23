@@ -171,9 +171,9 @@ body {
 
 /* 刘海屏/安全区域适配 */
 .pt-safe {
-  padding-top: env(safe-area-inset-top, 20px);
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 .pb-safe {
-  padding-bottom: env(safe-area-inset-bottom, 20px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
